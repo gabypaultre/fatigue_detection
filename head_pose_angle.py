@@ -1,26 +1,43 @@
 import cv2
 import numpy as np
 
-# Indices utilisés pour estimer la pose de la tête
-FACE_LANDMARKS_IDXS = [33, 263, 1, 61, 291, 199]  # Yeux, nez, bouche, menton
+# Landmarks MediaPipe utilisés pour l'orientation de la tête
+FACE_LANDMARKS_IDXS = {
+    'nose_tip': 1,
+    'chin': 152,
+    'left_eye_outer': 33,
+    'right_eye_outer': 263,
+    'left_mouth': 61,
+    'right_mouth': 291
+}
 
 def get_head_pose_angles(landmarks, width, height):
     image_points = np.array([
-        (landmarks.landmark[idx].x * width, landmarks.landmark[idx].y * height)
-        for idx in FACE_LANDMARKS_IDXS
+        (landmarks.landmark[FACE_LANDMARKS_IDXS['nose_tip']].x * width,
+         landmarks.landmark[FACE_LANDMARKS_IDXS['nose_tip']].y * height),
+        (landmarks.landmark[FACE_LANDMARKS_IDXS['chin']].x * width,
+         landmarks.landmark[FACE_LANDMARKS_IDXS['chin']].y * height),
+        (landmarks.landmark[FACE_LANDMARKS_IDXS['left_eye_outer']].x * width,
+         landmarks.landmark[FACE_LANDMARKS_IDXS['left_eye_outer']].y * height),
+        (landmarks.landmark[FACE_LANDMARKS_IDXS['right_eye_outer']].x * width,
+         landmarks.landmark[FACE_LANDMARKS_IDXS['right_eye_outer']].y * height),
+        (landmarks.landmark[FACE_LANDMARKS_IDXS['left_mouth']].x * width,
+         landmarks.landmark[FACE_LANDMARKS_IDXS['left_mouth']].y * height),
+        (landmarks.landmark[FACE_LANDMARKS_IDXS['right_mouth']].x * width,
+         landmarks.landmark[FACE_LANDMARKS_IDXS['right_mouth']].y * height)
     ], dtype="double")
 
-    # Modèle 3D de la tête (repère approximatif)
+    # Modèle 3D standardisé
     model_points = np.array([
-        (0.0, 0.0, 0.0),         # Nez
-        (0.0, -330.0, -65.0),    # Menton
-        (-225.0, 170.0, -135.0), # Coin oeil gauche
-        (225.0, 170.0, -135.0),  # Coin oeil droit
-        (-150.0, -150.0, -125.0),# Coin bouche gauche
-        (150.0, -150.0, -125.0)  # Coin bouche droit
+        (0.0, 0.0, 0.0),        # Nose tip
+        (0.0, -63.6, -12.5),    # Chin
+        (-43.3, 32.7, -26.0),   # Left eye outer corner
+        (43.3, 32.7, -26.0),    # Right eye outer corner
+        (-28.9, -28.9, -24.1),  # Left Mouth corner
+        (28.9, -28.9, -24.1)    # Right Mouth corner
     ])
 
-    # Paramètres caméra simulés
+    # Camera internals
     focal_length = width
     center = (width / 2, height / 2)
     camera_matrix = np.array([
@@ -29,20 +46,20 @@ def get_head_pose_angles(landmarks, width, height):
         [0, 0, 1]
     ], dtype="double")
 
-    dist_coeffs = np.zeros((4, 1))  # Pas de distorsion optique
+    dist_coeffs = np.zeros((4, 1))  # No lens distortion
 
-    # Résolution de PnP
     success, rotation_vector, translation_vector = cv2.solvePnP(
         model_points, image_points, camera_matrix, dist_coeffs, flags=cv2.SOLVEPNP_ITERATIVE
     )
 
-    # Calcul de la matrice de rotation
+    if not success:
+        return None, None, None
+
     rotation_mat, _ = cv2.Rodrigues(rotation_vector)
     pose_mat = np.hstack((rotation_mat, translation_vector))
 
     _, _, _, _, _, _, euler_angles = cv2.decomposeProjectionMatrix(pose_mat)
 
-    # Retourne les angles pitch, yaw, roll
     pitch, yaw, roll = euler_angles.flatten()
 
     return pitch, yaw, roll
