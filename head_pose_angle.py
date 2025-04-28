@@ -1,7 +1,6 @@
 import cv2
 import numpy as np
 
-# Landmarks MediaPipe utilisés pour l'orientation de la tête
 FACE_LANDMARKS_IDXS = {
     'nose_tip': 1,
     'chin': 152,
@@ -27,17 +26,15 @@ def get_head_pose_angles(landmarks, width, height):
          landmarks.landmark[FACE_LANDMARKS_IDXS['right_mouth']].y * height)
     ], dtype="double")
 
-    # Modèle 3D standardisé
     model_points = np.array([
-        (0.0, 0.0, 0.0),        # Nose tip
-        (0.0, -63.6, -12.5),    # Chin
-        (-43.3, 32.7, -26.0),   # Left eye outer corner
-        (43.3, 32.7, -26.0),    # Right eye outer corner
-        (-28.9, -28.9, -24.1),  # Left Mouth corner
-        (28.9, -28.9, -24.1)    # Right Mouth corner
+        (0.0, 0.0, 0.0),
+        (0.0, -63.6, -12.5),
+        (-43.3, 32.7, -26.0),
+        (43.3, 32.7, -26.0),
+        (-28.9, -28.9, -24.1),
+        (28.9, -28.9, -24.1)
     ])
 
-    # Camera internals
     focal_length = width
     center = (width / 2, height / 2)
     camera_matrix = np.array([
@@ -46,7 +43,7 @@ def get_head_pose_angles(landmarks, width, height):
         [0, 0, 1]
     ], dtype="double")
 
-    dist_coeffs = np.zeros((4, 1))  # No lens distortion
+    dist_coeffs = np.zeros((4, 1))
 
     success, rotation_vector, translation_vector = cv2.solvePnP(
         model_points, image_points, camera_matrix, dist_coeffs, flags=cv2.SOLVEPNP_ITERATIVE
